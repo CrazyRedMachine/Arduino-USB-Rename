@@ -1,5 +1,7 @@
 #include "usb_rename.h"
 
+extern const DeviceDescriptor PROGMEM USB_DeviceDescriptorIAD;
+
 static
 bool SendControl(u8 d)
 {
@@ -24,14 +26,23 @@ static bool USB_SendStringDescriptor(const u8*string_P, u8 string_len, uint8_t f
         return true;
 }
 
+const DeviceDescriptor USB_DeviceDescriptorIAD;
+
 USBRename::USBRename(
       const u8 *product_name = NULL,
       const u8 *manufacturer_name = NULL,
-      const u8 *serial_num = NULL) :
+      const u8 *serial_num = NULL,
+      const u16 vid = 0x8036,
+      const u16 pid = 0x2341) :
         manufacturer_name(manufacturer_name),
         product_name(product_name),
         serial_num(serial_num),
         PluggableUSBModule(1, 1, epType) {
+    vid = vid;
+    pid = pid;
+    USB_DeviceDescriptorIAD =
+  D_DEVICE(0xEF,0x02,0x01,64,vid,pid,0x100,IMANUFACTURER,IPRODUCT,ISERIAL,1);
+
     PluggableUSB().plug(this);
 }
 
@@ -41,6 +52,10 @@ int USBRename::getInterface(uint8_t* interfaceCount) {
 
 int USBRename::getDescriptor(USBSetup& setup)
 {
+    if(setup.wValueH == USB_DEVICE_DESCRIPTOR_TYPE) {
+        return USB_SendControl(TRANSFER_PGM, (const u8*)&USB_DeviceDescriptorIAD, sizeof(USB_DeviceDescriptorIAD));
+    }
+  
     if(setup.wValueH != USB_STRING_DESCRIPTOR_TYPE) {
         return 0;
     }
